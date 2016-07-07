@@ -20,90 +20,72 @@ public class UploadServlet extends HttpServlet {
    
    private boolean isMultipart;
    private String filePath;
-   private int maxFileSize = 5000 * 1024;
-   private int maxMemSize = 40 * 1024;
+   private int maxFileSize = 1024*1024*10; // 10 MB
+   private int maxMemSize = 1024*1024*10;
    private File file ;
 
    public void init( ){
-      // Get the file location where it would be stored.
-      filePath = 
-             getServletContext().getInitParameter("file-upload"); 
+      filePath = getServletContext().getInitParameter("file-upload"); 
    }
    public void doPost(HttpServletRequest request, HttpServletResponse response) 
 		   throws ServletException, java.io.IOException {
-      // Check that we have a file upload request
       isMultipart = ServletFileUpload.isMultipartContent(request);
       response.setContentType("text/html");
-      java.io.PrintWriter out = response.getWriter( );
       if( !isMultipart ){
-         out.println("<html>");
-         out.println("<head>");
-         out.println("<title>Servlet upload</title>");  
-         out.println("</head>");
-         out.println("<body>");
-         out.println("<p>No file uploaded</p>"); 
-         out.println("</body>");
-         out.println("</html>");
+    	  request.setAttribute("is_file_uploaded", false);
+          request.getRequestDispatcher("upload-success.jsp").forward(request, response);
          return;
       }
       
       DiskFileItemFactory factory = new DiskFileItemFactory();
-      // maximum size that will be stored in memory
       factory.setSizeThreshold(maxMemSize);
       // Location to save data that is larger than maxMemSize.
       factory.setRepository(new File("\temp"));
 
       // Create a new file upload handler
       ServletFileUpload upload = new ServletFileUpload(factory);
-      // maximum file size to be uploaded.
       upload.setSizeMax( maxFileSize );
 
       try{ 
       // Parse the request to get file items.
       List fileItems = upload.parseRequest(request);
-	
-      // Process the uploaded file items
       Iterator i = fileItems.iterator();
-
-      out.println("<html>");
-      out.println("<head>");
-      out.println("<title>Servlet upload</title>");  
-      out.println("</head>");
-      out.println("<body>");
-      while ( i.hasNext () ) 
+      while ( i.hasNext() ) 
       {
          FileItem fi = (FileItem)i.next();
-         if ( !fi.isFormField () )	
-         {
-            // Get the uploaded file parameters
+         if ( !fi.isFormField () ){
+            
+        	 
+        	 // by this way we can get file properties
             String fieldName = fi.getFieldName();
             String fileName = fi.getName();
             String contentType = fi.getContentType();
             boolean isInMemory = fi.isInMemory();
             long sizeInBytes = fi.getSize();
-            // Write the file
+            
+            
+            //Write the file
             if( fileName.lastIndexOf("\\") >= 0 ){
                file = new File( filePath + 
                fileName.substring( fileName.lastIndexOf("\\"))) ;
-            }else{
+            } else {
                file = new File( filePath + 
                fileName.substring(fileName.lastIndexOf("\\")+1)) ;
             }
-            fi.write( file ) ;
-            out.println("Uploaded Filename: " + fileName + "<br>");
-         } 
+            fi.write( file );
+            request.setAttribute("file_name", fileName);
+            request.setAttribute("is_file_uploaded", true);
+            request.getRequestDispatcher("upload-success.jsp").forward(request, response);
+         }
       }
-      out.println("</body>");
-      out.println("</html>");
-   }catch(Exception ex) {
+   } catch(Exception ex) {
        System.out.println(ex);
+       PrintWriter pw = response.getWriter();
+       pw.println("Error occured :: "+ ex.getMessage());
    }
    }
-   public void doGet(HttpServletRequest request, 
-                       HttpServletResponse response)
+   public void doGet(HttpServletRequest request, HttpServletResponse response)
         throws ServletException, java.io.IOException {
-        
-        throw new ServletException("GET method used with " +
-                getClass( ).getName( )+": POST method required.");
-   } 
+        throw new ServletException("GET method is not supported, POST method required.");
+   }
 }
